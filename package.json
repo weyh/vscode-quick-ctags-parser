@@ -2,6 +2,11 @@
   "name": "quick-ctags-parser",
   "displayName": "quick-ctags-parser",
   "description": "",
+  "publisher": "weyh",
+  "author": {
+    "name": "weyh",
+    "url": "https://github.com/weyh"
+  },
   "repository": {
     "url": "https://github.com/weyh/vscode-quick-ctags-parser"
   },
