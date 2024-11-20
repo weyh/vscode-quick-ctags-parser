@@ -1,7 +1,7 @@
 {
   "name": "quick-ctags-parser",
   "displayName": "quick-ctags-parser",
-  "description": "",
+  "description": "A simple ctags file parser that let's you jump to the definition of a tag",
   "publisher": "weyh",
   "author": {
     "name": "weyh",
@@ -10,9 +10,9 @@
   "repository": {
     "url": "https://github.com/weyh/vscode-quick-ctags-parser"
   },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "engines": {
-    "vscode": "^1.95.0"
+    "vscode": "^1.75.0"
   },
   "categories": [
     "Other"
@@ -59,7 +59,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.95.0",
+    "@types/vscode": "^1.75.0",
     "@types/mocha": "^10.0.9",
     "@types/node": "20.x",
     "@typescript-eslint/eslint-plugin": "^8.10.0",

@@ -8,7 +8,6 @@ I wrote this small extension because all the other already available ones didn't
 2. Select a tag that you want to look up
 3. Use `crtl+t` or *right click + Jump to definition*
 
-
 ## License
 
 This extension is licensed under the [MIT License](LICENSE).

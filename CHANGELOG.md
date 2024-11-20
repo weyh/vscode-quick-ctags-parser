@@ -6,4 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [v1.0.1]
+
+- Improved progress bar and parsing
+
+## [v1.0.0]
+
 - Initial release

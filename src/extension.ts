@@ -10,11 +10,21 @@ type Tag = {
 	char: number
 }
 
-function findCtag(filePath: string, selectedText: string): Tag | null {
+enum ErrorType {
+	EXEPTION,
+	EMPTY_FILE
+}
+
+type Error = {
+	type: ErrorType,
+	couse?: any
+}
+
+function findCtag(filePath: string, selectedText: string): { tag?: Tag, error?: Error } {
 	const reg = new RegExp(`^${selectedText}(\\(?|\\s*)$`);
 
 	try {
-		let content = fs.readFileSync(filePath, 'utf8');
+		const content = fs.readFileSync(filePath, 'utf8');
 
 		for (const line of content.split('\n')) {
 			if (line.startsWith("!_TAG")) {
@@ -22,6 +32,10 @@ function findCtag(filePath: string, selectedText: string): Tag | null {
 			}
 
 			const data = line.split('\t');
+			if (data.length < 3) {
+				continue;
+			}
+
 			if (!reg.test(data[0])) {
 				continue;
 			}
@@ -46,13 +60,13 @@ function findCtag(filePath: string, selectedText: string): Tag | null {
 				vscode.window.showWarningMessage(`No line number is found for '${tag.tag}' tag.`);
 			}
 
-			return tag;
+			return { tag: tag };
 		}
-	} catch (err) {
-		console.error(err);
-	}
 
-	return null;
+		return { error: { type: ErrorType.EMPTY_FILE } };
+	} catch (err) {
+		return { error: { type: ErrorType.EXEPTION, couse: err } };
+	}
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -69,36 +83,42 @@ export function activate(context: vscode.ExtensionContext) {
 		const selectedText = document.getText(selection);
 
 		if (!selectedText) {
-			vscode.window.showInformationMessage('No function selected.');
+			vscode.window.showInformationMessage('No text selected.');
 			return;
 		}
 
 		const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 		if (!folder) {
-			vscode.window.showErrorMessage('No workspace folder found.');
+			vscode.window.showErrorMessage('Workspace folder not found.');
 			return;
 		}
 
-		const tag = findCtag(path.join(folder, ".tags"), selectedText);
-		if (tag === null) {
-			vscode.window.showErrorMessage(`${path.join(folder, ".tags")} cannot be parsed.`);
-			return;
-		}
+		vscode.window.withProgress(
+			{ location: vscode.ProgressLocation.Notification, title: 'Searching for definition...' },
+			async () => {
+				const ret = findCtag(path.join(folder, ".tags"), selectedText);
+				if (ret.error) {
+					console.error(ret.error);
+					vscode.window.showErrorMessage(`${path.join(folder, ".tags")} cannot be parsed. Couse: ${ret.error.couse}`);
+					return;
+				}
 
-		vscode.workspace.openTextDocument(path.join(folder, tag.file)).then((doc) => {
-			vscode.window.showTextDocument(doc).then((editor) => {
-				const start = new vscode.Position(
-					Math.max(0, tag.line - 1),
-					Math.max(0, tag.char)
-				);
-				const end = new vscode.Position(
-					Math.max(0, tag.line - 1),
-					Math.max(0, tag.char) + tag.tag.length
-				);
-				editor.selection = new vscode.Selection(start, end);
-				editor.revealRange(new vscode.Range(start, end));
+				const foundTag = ret.tag!;
+				vscode.workspace.openTextDocument(path.join(folder, foundTag.file)).then((doc) => {
+					vscode.window.showTextDocument(doc).then((editor) => {
+						const start = new vscode.Position(
+							Math.max(0, foundTag.line - 1),
+							Math.max(0, foundTag.char)
+						);
+						const end = new vscode.Position(
+							Math.max(0, foundTag.line - 1),
+							Math.max(0, foundTag.char) + (foundTag.char !== -1 ? foundTag.tag.length : 0)
+						);
+						editor.selection = new vscode.Selection(start, end);
+						editor.revealRange(new vscode.Range(start, end), vscode.TextEditorRevealType.InCenter);
+					});
+				});
 			});
-		});
 	});
 
 	context.subscriptions.push(disposable);
