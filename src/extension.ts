@@ -10,16 +10,6 @@ type Tag = {
 	char: number
 }
 
-enum ErrorType {
-	EXEPTION,
-	EMPTY_FILE
-}
-
-type Error = {
-	type: ErrorType,
-	couse?: any
-}
-
 function findCtag(filePath: string, selectedText: string): { tag?: Tag, error?: Error } {
 	const reg = new RegExp(`^${selectedText}(\\(?|\\s*)$`);
 
@@ -42,7 +32,7 @@ function findCtag(filePath: string, selectedText: string): { tag?: Tag, error?: 
 
 			const tag: Tag = {
 				tag: data[0],
-				file: data[1],
+				file: path.normalize(data[1]),
 				regex: data[2],
 				line: -1,
 				char: -1
@@ -63,9 +53,9 @@ function findCtag(filePath: string, selectedText: string): { tag?: Tag, error?: 
 			return { tag: tag };
 		}
 
-		return { error: { type: ErrorType.EMPTY_FILE } };
+		return { error: { name: "Tag not found in file", message: "Tag not found in file" } };
 	} catch (err) {
-		return { error: { type: ErrorType.EXEPTION, couse: err } };
+		return { error: { name: "Exeption happend", message: `${err}` } };
 	}
 }
 
@@ -87,8 +77,8 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-		if (!folder) {
+		const workspaces = vscode.workspace.workspaceFolders;
+		if (!workspaces) {
 			vscode.window.showErrorMessage('Workspace folder not found.');
 			return;
 		}
@@ -96,15 +86,33 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.withProgress(
 			{ location: vscode.ProgressLocation.Notification, title: 'Searching for definition...' },
 			async () => {
-				const ret = findCtag(path.join(folder, ".tags"), selectedText);
-				if (ret.error) {
-					console.error(ret.error);
-					vscode.window.showErrorMessage(`${path.join(folder, ".tags")} cannot be parsed. Couse: ${ret.error.couse}`);
+				let foundTag: Tag | undefined = undefined;
+				let foundFolder: string | undefined = undefined;
+				const errors: Error[] = [];
+
+				for (const workspace of workspaces) {
+					const folder = path.normalize(workspace.uri.fsPath);
+					const ret = findCtag(path.join(folder, ".tags"), selectedText);
+
+					if (ret.error) {
+						console.error(ret.error);
+						errors.push(ret.error);
+					} else {
+						foundTag = ret.tag!;
+						foundFolder = folder;
+						console.log(`Tag found in ${foundTag.file}:${foundTag.line}`);
+						break;
+					}
+				}
+
+				if (foundTag === undefined || foundFolder === undefined) {
+					vscode.window.showErrorMessage(`Couldn't parse '.tags' from any workspace folder(s). Cause: ${errors.map(e => e.message).join(', ')}`);
 					return;
 				}
 
-				const foundTag = ret.tag!;
-				vscode.workspace.openTextDocument(path.join(folder, foundTag.file)).then((doc) => {
+				const filePath = path.isAbsolute(foundTag.file) ? foundTag.file : path.join(foundFolder, foundTag.file);
+				console.log(`File path: ${filePath}`);
+				vscode.workspace.openTextDocument(filePath).then((doc) => {
 					vscode.window.showTextDocument(doc).then((editor) => {
 						const start = new vscode.Position(
 							Math.max(0, foundTag.line - 1),
